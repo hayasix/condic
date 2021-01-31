@@ -52,7 +52,7 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 __status__ = "Production"
 __description__ = "Look up PDIC dictionay"
 
@@ -186,7 +186,7 @@ def main(words, lang, dictionary, file=sys.stdout, **opts):
                 if opts.get("phrase"):
                     pat = f"{pat} "
                 else:
-                    pat = f"^{pat}[.]?( #[0-9]+)? /"
+                    pat = f"^{pat}[.]?(,[^/]+)?( #[0-9]+)? /"
             regex = re.compile(pat, re.I)
             found = 0
             for line in in_:
