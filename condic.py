@@ -25,7 +25,7 @@ Output options:
   --output-newline=NL       output newline [default: crlf]
 
 Error handling in output encoding:
-  Valid arguments METHOD for option --output-errors are:
+  Valid METHODs for option --output-errors are:
     strict                  raise ValueError
     ignore                  simply dispose
     replace                 replace with '?'
@@ -52,9 +52,9 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.0.3"
+__version__ = "1.0.4"
 __status__ = "Production"
-__description__ = "Look up PDIC dictionay"
+__description__ = "A small program to look up PDIC dictionaries"
 
 
 LANG = dict()
@@ -171,7 +171,7 @@ def listlanguages():
         print(f"{d.replace('_', ' ')}: {', '.join(sorted(t[d]))}")
 
 
-def main(words, lang, dictionary, file=sys.stdout, **opts):
+def lookup(words, lang, dictionary, file=sys.stdout, **opts):
     newline = opts.get("newline", "\n")
     asciify = opts.get("asciify", lambda s: s)
     langobj = LANG[lang]()
@@ -201,7 +201,7 @@ def main(words, lang, dictionary, file=sys.stdout, **opts):
                 print(f"E: '{word}' is not found", end=newline, file=file)
 
 
-def __main__():
+def main():
     args = docopt.docopt(__doc__.format(
                 script=os.path.basename(__file__),
                 description=__description__,
@@ -229,8 +229,8 @@ def __main__():
             encoding=args["--output-encoding"],
             errors=args["--output-errors"],
             buffering=buffering) as out:
-        main(args["WORD"], lang, dictionary, file=out, **opts)
+        lookup(args["WORD"], lang, dictionary, file=out, **opts)
 
 
 if __name__ == "__main__":
-    sys.exit(__main__())
+    sys.exit(main())
