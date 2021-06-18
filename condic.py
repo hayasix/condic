@@ -52,7 +52,7 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 __status__ = "Production"
 __description__ = "A small program to look up PDIC dictionaries"
 
@@ -99,6 +99,13 @@ class Bahasa_Indonesia(Language):
     iso639_1 = "id"
     iso639_3 = "ind"
     path = "ind.dic"
+
+
+class English(Language):
+
+    iso639_1 = "en"
+    iso639_3 = "eng"
+    path = "eng.dic"
 
 
 class Lojban(Language):
