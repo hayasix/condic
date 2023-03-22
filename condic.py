@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # vim: set fileencoding=utf-8 fileformat=unix :
 
-"""{description}
+"""A simple lookup tool for PDIC dictionaries.
 
 Usage: {script} [options] WORD...
        {script} --list
@@ -12,6 +12,7 @@ Options:
   --list                    show supported languages
   -l, --language=LANG       target language in 3-letter code [default: epo]
   -d, --dictionary=FILE     use dictionary file
+  -e, --encoding=ENC        use ENC encoding to read dictionary files
   -r, --reverse             search descriptions
   -p, --phrase              search phrases also
   -A, --literal             search literally (not ambiguous)
@@ -52,9 +53,9 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.0.5"
+__version__ = "1.1.0"
 __status__ = "Production"
-__description__ = "A small program to look up PDIC dictionaries"
+__description__ = "A simple lookup tool for PDIC dictionaries"
 
 
 LANG = dict()
@@ -75,6 +76,7 @@ class Language:
     # iso639_2 is not used.
     iso639_3 = None  # "xxx"
     path = None  # "xxx.dic"
+    encoding = "utf-8"
     trans = "".maketrans("", "")
 
     def __init_subclass__(cls, **kw):
@@ -178,34 +180,36 @@ def listlanguages():
         print(f"{d.replace('_', ' ')}: {', '.join(sorted(t[d]))}")
 
 
-def lookup(words, lang, dictionary, file=sys.stdout, **opts):
+def lookup(words, lang, dictionary, encoding="", file=sys.stdout, **opts):
     newline = opts.get("newline", "\n")
     asciify = opts.get("asciify", lambda s: s)
     langobj = LANG[lang]()
-    with open(dictionary, "r", encoding="utf-8") as in_:
-        for word in words:
-            in_.seek(0)
-            word = langobj.compose(word.lower())
-            if opts.get("normalize"):
-                word = langobj.normalize(word)
-            pat = asciify(word).replace("*", ".*")
-            if not opts.get("reverse"):
-                if opts.get("phrase"):
-                    pat = f"{pat} "
-                else:
-                    pat = f"^{pat}[.]?(,[^/]+)?( #[0-9]+)? /"
-            regex = re.compile(pat, re.I)
-            found = 0
-            for line in in_:
-                if opts.get("reverse"):
-                    t = asciify(line)
-                else:
-                    t = asciify(line[:line.index("/") + 1])
-                if regex.search(t):
-                    found += 1
-                    print(line.rstrip(), end=newline, file=file)
-            if not found and opts.get("verbose"):
-                print(f"E: '{word}' is not found", end=newline, file=file)
+    words = [langobj.compose(word.lower()) for word in words]
+    if opts.get("normalize"):
+        words = [langobj.normalize(word) for word in words]
+    pats = [asciify(word).replace("*", ".*") for word in words]
+    if not opts.get("reverse"):
+        if opts.get("phrase"):
+            pats = [f"{pat} " for pat in pats]
+        else:
+            pats = [f"^{pat}[.]?(,[^/]+)?( #[0-9]+)? /" for pat in pats]
+    regexs = [re.compile(pat, re.I) for pat in pats]
+    found = 0
+    with open(dictionary, "r", encoding=encoding or langobj.encoding) as in_:
+        for line in in_:
+            printable = False
+            if opts.get("reverse"):
+                t = asciify(line)
+            else:
+                t = asciify(line[:line.index("/") + 1])
+            for regex in regexs:
+                if not regex.search(t): continue
+                found += 1
+                printable = True
+            if printable:
+                print(line.rstrip(), end=newline, file=file)
+    if not found and opts.get("verbose"):
+        print(f"E: '{word}' is not found", end=newline, file=file)
 
 
 def main():
@@ -236,7 +240,8 @@ def main():
             encoding=args["--output-encoding"],
             errors=args["--output-errors"],
             buffering=buffering) as out:
-        lookup(args["WORD"], lang, dictionary, file=out, **opts)
+        lookup(args["WORD"], lang, dictionary, encoding=args["--encoding"],
+                file=out, **opts)
 
 
 if __name__ == "__main__":
