@@ -3,7 +3,7 @@
 
 """A simple lookup tool for PDIC dictionaries.
 
-Usage: {script} [options] WORD...
+Usage: {script} [options] [WORD...]
        {script} --list
 
 Options:
@@ -13,6 +13,7 @@ Options:
   -l, --language=LANG       target language in 3-letter code [default: epo]
   -d, --dictionary=FILE     use dictionary file
   -e, --encoding=ENC        use ENC encoding to read dictionary files
+  -i, --interactive         interactive mode
   -r, --reverse             search descriptions
   -p, --phrase              search phrases also
   -A, --literal             search literally (not ambiguous)
@@ -53,7 +54,7 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.1.0"
+__version__ = "1.2.0"
 __status__ = "Production"
 __description__ = "A simple lookup tool for PDIC dictionaries"
 
@@ -101,6 +102,13 @@ class Bahasa_Indonesia(Language):
     iso639_1 = "id"
     iso639_3 = "ind"
     path = "ind.dic"
+    phonetic_change = dict(k="g", p="m", s="ny", t="n")
+
+    def normalize(self, s):
+        "Modify a word to allow a phonetically changed form as well."
+        for c, d in self.phonetic_change.items():
+            s = s.replace(f"*{c}", f"*({c}|{d})")
+        return s
 
 
 class English(Language):
@@ -187,7 +195,7 @@ def lookup(words, lang, dictionary, encoding="", file=sys.stdout, **opts):
     words = [langobj.compose(word.lower()) for word in words]
     if opts.get("normalize"):
         words = [langobj.normalize(word) for word in words]
-    pats = [asciify(word).replace("*", ".*") for word in words]
+    pats = [asciify(word).replace("*", r"\w*") for word in words]
     if not opts.get("reverse"):
         if opts.get("phrase"):
             pats = [f"{pat} " for pat in pats]
@@ -240,8 +248,19 @@ def main():
             encoding=args["--output-encoding"],
             errors=args["--output-errors"],
             buffering=buffering) as out:
-        lookup(args["WORD"], lang, dictionary, encoding=args["--encoding"],
-                file=out, **opts)
+        def dolookup(words):
+            lookup(words, lang, dictionary, encoding=args["--encoding"],
+                   file=out, **opts)
+        dolookup(args["WORD"])
+        if args["--interactive"] and args["--output"] == "-":
+            while (words := input("Word(q=quit)> ")):
+                if words and words.casefold() in ("q", "quit", "bye"):
+                    break
+                if words.startswith("-"):
+                    opts["reverse"] = not opts["reverse"]
+                    words = words.lstrip("-")
+                dolookup(words.split())
+                opts["reverse"] = False
 
 
 if __name__ == "__main__":
