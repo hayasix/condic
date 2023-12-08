@@ -54,7 +54,7 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __status__ = "Production"
 __description__ = "A simple lookup tool for PDIC dictionaries"
 
@@ -229,9 +229,12 @@ def main():
         listlanguages()
         return
     lang = args["--language"].lower()
-    langobj = LANG[lang]()
-    dictionary = (args["--dictionary"] or
-               os.path.join(os.path.dirname(__file__), langobj.path))
+    def getdic(lang):
+        langobj = LANG[lang]()
+        dictionary = (args["--dictionary"] or
+                   os.path.join(os.path.dirname(__file__), langobj.path))
+        return langobj, dictionary
+    langobj, dictionary = getdic(lang)
     opts = dict(
             newline=NEWLINES[args["--output-newline"].lower()],
             asciify=(lambda s: s) if args["--literal"] else langobj.asciify,
@@ -249,13 +252,36 @@ def main():
             errors=args["--output-errors"],
             buffering=buffering) as out:
         def dolookup(words):
+            wl = []
+            q = None
+            for w in words:
+                if q:
+                    if w.endswith(q):
+                        q = None
+                        w = w[:-1]
+                    wl[-1] += " " + w
+                else:
+                    if w.startswith('"') or w.startswith("'"):
+                        q = w[0]
+                        w = w[1:]
+                    wl.append(w)
+            words = wl
             lookup(words, lang, dictionary, encoding=args["--encoding"],
                    file=out, **opts)
         dolookup(args["WORD"])
         if args["--interactive"] and args["--output"] == "-":
-            while (words := input("Word(q=quit)> ")):
+            while (words := input(f"{lang}> ")):
                 if words and words.casefold() in ("q", "quit", "bye"):
                     break
+                if words and words.casefold() in ("?", "help"):
+                    print("Enter any words to look up in dictionary.", file=out)
+                    print("-WORD to search words in descriptions.")
+                    print("? / help to show this, q / quit to exit.", file=out)
+                    continue
+                if words in LANG:
+                    lang = words
+                    langobj, dictionary = getdic(lang)
+                    continue
                 if words.startswith("-"):
                     opts["reverse"] = not opts["reverse"]
                     words = words.lstrip("-")
