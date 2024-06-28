@@ -19,6 +19,7 @@ Options:
   -A, --literal             search literally (not ambiguous)
   -n, --normalize           search normalized form (experimental)
   -v, --verbose             report if word not found
+  -2, --double-space        put a blank line between descriptions
 
 Output options:
   -o, --output=FILE         output to FILE in UTF-8 [default: -]
@@ -54,7 +55,7 @@ __author__ = "HAYASHI Hideki"
 __email__ = "hideki@hayasix.com"
 __copyright__ = "Copyright (C) 2018 HAYASHI Hideki <hideki@hayasix.com>"
 __license__ = "ZPL 2.1"
-__version__ = "1.3.0"
+__version__ = "1.4.0"
 __status__ = "Production"
 __description__ = "A simple lookup tool for PDIC dictionaries"
 
@@ -168,11 +169,11 @@ class Español(Language):
     def decompose(self, s):
         return translate(s,
                 "á  é  í  ó  ú  ü  ñ  ¿  ¡",
-                "a' e' i' o' u' u: n~ \? \!")
+                "a' e' i' o' u' u: n~ ? !")
 
     def compose(self, s):
         return translate(s,
-                "a' e' i' o' u' u: n~ \? \!",
+                "a' e' i' o' u' u: n~ ? !",
                 "á  é  í  ó  ú  ü  ñ  ¿  ¡")
 
 
@@ -191,6 +192,7 @@ def listlanguages():
 def lookup(words, lang, dictionary, encoding="", file=sys.stdout, **opts):
     newline = opts.get("newline", "\n")
     asciify = opts.get("asciify", lambda s: s)
+    doublespace = opts.get("doublespace")
     langobj = LANG[lang]()
     words = [langobj.compose(word.lower()) for word in words]
     if opts.get("normalize"):
@@ -203,6 +205,7 @@ def lookup(words, lang, dictionary, encoding="", file=sys.stdout, **opts):
             pats = [f"^{pat}[.]?(,[^/]+)?( #[0-9]+)? /" for pat in pats]
     regexs = [re.compile(pat, re.I) for pat in pats]
     found = 0
+    results = 0
     with open(dictionary, "r", encoding=encoding or langobj.encoding) as in_:
         for line in in_:
             printable = False
@@ -215,7 +218,10 @@ def lookup(words, lang, dictionary, encoding="", file=sys.stdout, **opts):
                 found += 1
                 printable = True
             if printable:
+                if doublespace and results:
+                    print("", end=newline, file=file)
                 print(line.rstrip(), end=newline, file=file)
+                results += 1
     if not found and opts.get("verbose"):
         print(f"E: '{word}' is not found", end=newline, file=file)
 
@@ -247,6 +253,7 @@ def main():
         target, buffering = sys.stdout.fileno(), 0
     else:
         target, buffering = args["--output"], 1
+    doublespace = args["--double-space"]
     with codecs.open(target, "w",
             encoding=args["--output-encoding"],
             errors=args["--output-errors"],
@@ -267,6 +274,7 @@ def main():
                     wl.append(w)
             words = wl
             lookup(words, lang, dictionary, encoding=args["--encoding"],
+                   doublespace=doublespace,
                    file=out, **opts)
         dolookup(args["WORD"])
         if args["--interactive"] and args["--output"] == "-":
